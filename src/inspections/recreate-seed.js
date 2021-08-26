@@ -10,6 +10,12 @@ global.Response = fetch.Response;
 
 const runExample = async () => {
   try {
+    console.log(
+      "Time:",
+      new Date().toLocaleDateString(),
+      new Date().toLocaleTimeString()
+    );
+
     const config = {
       node: "https://chrysalis-nodes.iota.org:443",
     };
