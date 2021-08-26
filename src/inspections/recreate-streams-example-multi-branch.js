@@ -301,4 +301,4 @@ const runExample = async () => {
     console.log("error:", e);
   }
 };
-runExample().then(() => console.log("log"));
+runExample().then(() => console.log("done :)"));

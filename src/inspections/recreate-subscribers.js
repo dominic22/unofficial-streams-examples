@@ -44,6 +44,8 @@ const runExample = async () => {
                 const maskedPayload =
                   message && fromBytes(message.get_masked_payload());
 
+                console.log("nextMessages", maskedPayload);
+
                 try {
                   if (!publicPayload && !maskedPayload) {
                     return null;
@@ -95,14 +97,17 @@ const runExample = async () => {
       return new streams.Client(node, options.clone());
     };
     const annLink =
-      "7999a4c2ddfb768609e47062358442748d85e91760c49814c89ace09a79b26010000000000000000:ec9707114d7e009cc932da94";
+      "f2b2d9ae7cb636f433d897de8c5b4a480571af407c8ff1870f1b54722c971e6a0000000000000000:4830dd7e8a5d05629dedfa9c";
     let annAddress = streams.Address.from_string(annLink);
 
-    const seed = "SubscriberA";
-
+    console.log(
+      `##########\n##########\nAnnouncement Link: ${annLink}\n##########\n##########`
+    );
     console.log(
       "-----------------------------------------------------------------------------"
     );
+
+    const seed = "SubscriberA";
     let client = getClient(config.node);
     const subscriber_a = streams.Subscriber.from_client(client, seed);
     await subscriber_a.clone().receive_announcement(annAddress.copy());
