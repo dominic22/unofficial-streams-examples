@@ -89,7 +89,7 @@ const runExample = async () => {
       return new streams.Client(node, options.clone());
     };
     const annLink =
-      "35436d85795837f18c48f354365df8cb54ed953c29bf84d5d59d01a9f8259cc80000000000000000:6628c5dfa8dfd68805e4e455";
+      "7999a4c2ddfb768609e47062358442748d85e91760c49814c89ace09a79b26010000000000000000:ec9707114d7e009cc932da94";
     let annAddress = streams.Address.from_string(annLink);
 
     const seed = "SubscriberA";
@@ -99,6 +99,13 @@ const runExample = async () => {
     await subscriber_a.clone().receive_announcement(annAddress.copy());
     const msgs = await fetchMessages(subscriber_a);
     console.log("received messages for SubA:", msgs);
+
+    const seed_b = "SubscriberB";
+    client = getClient(config.node);
+    const subscriber_b = streams.Subscriber.from_client(client, seed_b);
+    await subscriber_b.clone().receive_announcement(annAddress.copy());
+    const msgs_b = await fetchMessages(subscriber_b);
+    console.log("received messages for SubB:", msgs_b);
   } catch (e) {
     console.log("error:", e);
   }

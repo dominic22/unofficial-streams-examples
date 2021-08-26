@@ -13,6 +13,60 @@ const runExample = async () => {
       node: "https://chrysalis-nodes.iota.org:443",
     };
 
+    const fetchMessages = async (subscription) => {
+      try {
+        let foundNewMessage = true;
+        let streamsMessages = [];
+
+        while (foundNewMessage) {
+          let nextMessages = [];
+
+          nextMessages = await subscription.clone().fetch_next_msgs();
+
+          if (!nextMessages || nextMessages.length === 0) {
+            foundNewMessage = false;
+          }
+
+          if (nextMessages && nextMessages.length > 0) {
+            const cData = await Promise.all(
+              nextMessages.map(async (messageResponse) => {
+                const address = messageResponse?.get_link();
+                const link = address?.copy()?.to_string();
+                const message = messageResponse.get_message();
+                const publicPayload =
+                  message && fromBytes(message.get_public_payload());
+                const maskedPayload =
+                  message && fromBytes(message.get_masked_payload());
+
+                try {
+                  if (!publicPayload && !maskedPayload) {
+                    return null;
+                  }
+                  const linkDetails = await getClient(
+                    config.node
+                  )?.get_link_details(address?.copy());
+                  const messageId = linkDetails?.get_metadata()?.message_id;
+
+                  return {
+                    link,
+                    messageId,
+                    publicPayload: publicPayload,
+                    maskedPayload: maskedPayload,
+                  };
+                } catch (e) {
+                  return null;
+                }
+              })
+            );
+            streamsMessages = [...streamsMessages, ...cData];
+          }
+        }
+
+        return streamsMessages.filter((m) => m);
+      } catch (error) {
+        console.log("error:", error);
+      }
+    };
     const tryFetch = async (sub, caller) => {
       let retrieved = await sub.clone().fetch_next_msgs();
       try {
@@ -79,9 +133,7 @@ const runExample = async () => {
     // This link acts as a root for the channel itself
     let ann_link_string = ann_link.to_string();
     console.log(
-      `Announcement Link: ${ann_link_string}\nTangle Index: ${JSON.stringify(
-        ann_link
-      )}\n`
+      `##########\n##########\nAnnouncement Link: ${ann_link_string}\n##########\n##########`
     );
 
     // ------------------------------------------------------------------
@@ -110,16 +162,6 @@ const runExample = async () => {
     // These are the subscription links that should be provided to the Author to complete subscription
     let sub_msg_a_str = subscribe_msg_a.to_string();
     let sub_msg_b_str = subscribe_msg_b.to_string();
-    console.log(
-      `Subscription msgs:\n\tSubscriber A: ${sub_msg_a_str}\n\tTangle Index: ${JSON.stringify(
-        subscribe_msg_a
-      )}\n`
-    );
-    console.log(
-      `\tSubscriber B: ${sub_msg_b_str}\n\tTangle Index: ${JSON.stringify(
-        subscribe_msg_b
-      )}\n`
-    );
 
     // -----------------------------------------------------------------------------
     // Fetch subscriber public keys (for use by author in issuing a keyload)
@@ -146,17 +188,13 @@ const runExample = async () => {
     const keys_a = streams.PublicKeys.new();
     keys_a.add(sub_a_pk);
     // -----------------------------------------------------------------------------
-    // keys_a.add(sub_b_pk); // <-------------- uncomment this and subscriber_b is able to receive messages of subscriber_a --------------
+    keys_a.add(sub_b_pk);
     // -----------------------------------------------------------------------------
     let ids = streams.PskIds.new();
     const res = await author
       .clone()
       .send_keyload(ann_address.copy(), ids, keys_a);
     const keyloadLink_a = res?.get_link()?.to_string();
-    const sequenceLink_a = res?.get_seq_link()?.to_string();
-    console.log(
-      `\nSent Keyload for Sub A: ${keyloadLink_a}, seq: ${sequenceLink_a}`
-    );
 
     // -----------------------------------------------------------------------------
     // Author will send the second Keyload with the public key of Subscriber B (also linked to the
@@ -165,7 +203,7 @@ const runExample = async () => {
     const keys_b = streams.PublicKeys.new();
     keys_b.add(sub_b_pk);
     // ---------------------------------------------------------------------------------------------------------------------------------
-    keys_b.add(sub_a_pk); // <-------------- comment this and subscriber_a is not able to receive messages of subscriber_b --------------
+    keys_b.add(sub_a_pk);
     // ---------------------------------------------------------------------------------------------------------------------------------
     ids = streams.PskIds.new();
 
@@ -173,10 +211,6 @@ const runExample = async () => {
       .clone()
       .send_keyload(ann_address.copy(), ids, keys_b);
     const keyloadLink_b = res_b?.get_link()?.to_string();
-    const sequenceLink_b = res_b?.get_seq_link()?.to_string();
-    console.log(
-      `\nSent Keyload for Sub B: ${keyloadLink_b}, seq: ${sequenceLink_b}`
-    );
 
     // Before sending any messages, a publisher in a multi publisher channel should sync their state
     // to ensure they are up to date
@@ -192,13 +226,17 @@ const runExample = async () => {
       .clone()
       .send_signed_packet(latestAddress, toBytes(""), toBytes(message));
     const msg_link = res_signed_package_a.get_link();
-    const seq_link = res_signed_package_a.get_seq_link();
-    console.log(
-      `Sent msg from Sub A: ${JSON.stringify(msg_link)}, seq: ${JSON.stringify(
-        seq_link
-      )}`
-    );
+    console.log(`Sent msg from Sub A: ${msg_link.to_string()})}`);
     prev_msg_link = msg_link;
+
+    const msgs_subscriber_b = await fetchMessages(subscriber_b);
+    console.log(
+      "-----------------------------------------------------------------------------"
+    );
+    console.log("Messages of msgs_subscriber_b:", msgs_subscriber_b); // OK fetches all 2 messages of the subscriber_b
+    console.log(
+      "-----------------------------------------------------------------------------"
+    );
 
     // -----------------------------------------------------------------------------
     // Subscriber B will now send signed encrypted messages in a chain attached to Keyload B
@@ -210,36 +248,50 @@ const runExample = async () => {
       .clone()
       .send_signed_packet(latestAddress.copy(), toBytes(""), toBytes(message));
     const msg_link_b = res_signed_package_b.get_link();
-    const seq_link_b = res_signed_package_b.get_seq_link();
-    console.log(
-      `Sent msg from Sub B: ${msg_link_b.to_string()}, seq: ${seq_link_b.to_string()}`
-    );
+    console.log(`Sent msg from Sub B: ${msg_link_b.to_string()}`);
 
     // -----------------------------------------------------------------------------
-    // Subscriber B can not fetch the messages of himself
-    await tryFetch(subscriber_b.clone(), "Sub B"); // if you uncomment line 149 subscriber_b is able to receive the message from subscriber_a
-
     latestAddress = msg_link_b;
     message = "2nd very basic message from b";
     const res_signed_package_b2 = await subscriber_b
       .clone()
       .send_signed_packet(latestAddress.copy(), toBytes(""), toBytes(message));
     const msg_link_b2 = res_signed_package_b2.get_link();
-    const seq_link_b2 = res_signed_package_b2.get_seq_link();
+    console.log(`Sent msg 2 from Sub B: ${msg_link_b2.to_string()}`);
     console.log(
-      `Sent msg 2 from Sub B: ${msg_link_b2.to_string()}, seq: ${seq_link_b2.to_string()}`
+      "-----------------------------------------------------------------------------"
+    );
+    // -----------------------------------------------------------------------------
+    const msgs_subscriber_a = await fetchMessages(subscriber_a);
+    console.log("Messages of msgs_subscriber_a:", msgs_subscriber_a); // OK fetches all 2 messages of the subscriber_b
+    console.log(
+      "-----------------------------------------------------------------------------"
+    );
+    // -----------------------------------------------------------------------------
+    const msgs_author = await fetchMessages(author);
+    console.log("Messages of Author:", msgs_author); // OK fetches all 3 messages of the subscribers
+    console.log(
+      "-----------------------------------------------------------------------------"
     );
 
     // -----------------------------------------------------------------------------
-    // Subscriber A can now fetch these messages from Subscriber B
-    // if you comment line 168 subscriber_a is not able to fetch messages of subscriber_b since it public key is not added to the branch
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs "very basic message from b"
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs "2nd very basic message from b"
-
     // -----------------------------------------------------------------------------
-    // Author can now fetch these messages
-    await tryFetch(author.clone(), "Author"); // logs  "very basic message from b" +  "very basic message from a"
-    await tryFetch(author.clone(), "Author"); // logs  "2nd very basic message from b"
+    // Newly create subscriptions and fetch data again
+    // -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    client = getClient(config.node);
+    const subscriber_a2 = streams.Subscriber.from_client(client, "SubscriberA");
+    await subscriber_a2.clone().receive_announcement(ann_address.copy());
+    const msgs = await fetchMessages(subscriber_a2);
+    console.log("Messages of SubA:", msgs); // ERROR this varies sometimes it finds messages, sometimes not, sometimes only of b, sometimes only its own
+    console.log(
+      "-----------------------------------------------------------------------------"
+    );
+    client = getClient(config.node);
+    const subscriber_b2 = streams.Subscriber.from_client(client, "SubscriberB");
+    await subscriber_b2.clone().receive_announcement(ann_address.copy());
+    const msgs_b = await fetchMessages(subscriber_b2);
+    console.log("Messages of SubB:", msgs_b); // ERROR this varies sometimes it finds messages, sometimes not, sometimes only of a, sometimes only its own
   } catch (e) {
     console.log("error:", e);
   }
