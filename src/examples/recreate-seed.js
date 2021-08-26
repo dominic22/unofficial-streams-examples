@@ -13,18 +13,59 @@ const runExample = async () => {
     const config = {
       node: "https://chrysalis-nodes.iota.org:443",
     };
-    const tryFetch = async (sub, caller) => {
-      let retrieved = await sub.clone().fetch_next_msgs();
+    const fetchMessages = async (subscription) => {
       try {
-        retrieved.map((r) => {
-          const payload = JSON.stringify(
-            fromBytes(r.get_message().get_masked_payload())
-          );
-          console.log(`Received message for: ${caller} - ${payload}`);
-          return null;
-        });
-      } catch (e) {
-        console.log("error");
+        let foundNewMessage = true;
+        let streamsMessages = [];
+
+        while (foundNewMessage) {
+          let nextMessages = [];
+
+          nextMessages = await subscription.clone().fetch_next_msgs();
+
+          if (!nextMessages || nextMessages.length === 0) {
+            foundNewMessage = false;
+            console.log("No more found...");
+          }
+
+          if (nextMessages && nextMessages.length > 0) {
+            const cData = await Promise.all(
+              nextMessages.map(async (messageResponse) => {
+                const address = messageResponse?.get_link();
+                const link = address?.copy()?.to_string();
+                const message = messageResponse.get_message();
+                const publicPayload =
+                  message && fromBytes(message.get_public_payload());
+                const maskedPayload =
+                  message && fromBytes(message.get_masked_payload());
+
+                try {
+                  if (!publicPayload && !maskedPayload) {
+                    return null;
+                  }
+                  const linkDetails = await getClient(
+                    config.node
+                  )?.get_link_details(address?.copy());
+                  const messageId = linkDetails?.get_metadata()?.message_id;
+
+                  return {
+                    link,
+                    messageId,
+                    publicPayload: publicPayload && JSON.parse(publicPayload),
+                    maskedPayload: maskedPayload && JSON.parse(maskedPayload),
+                  };
+                } catch (e) {
+                  return null;
+                }
+              })
+            );
+            streamsMessages = [...streamsMessages, ...cData];
+          }
+        }
+
+        return streamsMessages.filter((m) => m);
+      } catch (error) {
+        console.log("error:", error);
       }
     };
 
@@ -49,25 +90,19 @@ const runExample = async () => {
       return new streams.Client(node, options.clone());
     };
     const annLink =
-      "4151e7b76062548e595fb3ef1624493b45ecf67b237e947a4f533c594f3a24190000000000000000:200e75eeb827e7a02069ee41";
+      "75e6f5b0eac94413eda9e153df34ad52f706142dd4071f2b34a039c3a95c793b0000000000000000:57edc89af748d2644f496303";
     let annAddress = streams.Address.from_string(annLink);
 
     const seed =
-      "xyysaaaudehcewtwgplfonzpynevlxxukclajoekvgjujjqxahmbekzthidkjhuiljjfxdix";
+      "jpbrpgibzbfsuawxozcelnotlogwyiquvvisqdjcnnnvvvdanjfpuuygksdkhwdngglvajgl";
 
     const client = getClient(config.node);
-    let subscriber_a = streams.Subscriber.from_client(client, seed);
+    const subscriber_a = streams.Subscriber.from_client(client, seed);
     await subscriber_a.clone().receive_announcement(annAddress.copy());
 
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs "message from the grand author"
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs ""
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs nothing
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs nothing
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs nothing
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs nothing
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs nothing
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs nothing
-    await tryFetch(subscriber_a.clone(), "Sub A"); // logs nothing
+    const msgs = await fetchMessages(subscriber_a);
+    console.log("received messages:", msgs);
+    console.log("Caller:", caller);
   } catch (e) {
     console.log("error:", e);
   }
