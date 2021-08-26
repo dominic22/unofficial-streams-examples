@@ -233,7 +233,7 @@ const runExample = async () => {
     console.log(
       "-----------------------------------------------------------------------------"
     );
-    console.log("Messages of msgs_subscriber_b:", msgs_subscriber_b); // OK fetches all 2 messages of the subscriber_b
+    console.log("Messages of msgs_subscriber_b:", msgs_subscriber_b); // OK fetches message of the subscriber_a
     console.log(
       "-----------------------------------------------------------------------------"
     );
