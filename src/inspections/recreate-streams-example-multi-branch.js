@@ -288,7 +288,7 @@ const runExample = async () => {
     const subscriber_a2 = streams.Subscriber.from_client(client, "SubscriberA");
     await subscriber_a2.clone().receive_announcement(ann_address.copy());
     const msgs = await fetchMessages(subscriber_a2);
-    console.log("Messages of SubA:", msgs); // ERROR this varies sometimes it finds messages, sometimes not, sometimes only of b, sometimes only its own
+    console.log("Messages of recreated SubA:", msgs); // ERROR this varies sometimes it finds messages, sometimes not, sometimes only of b, sometimes only its own
     console.log(
       "-----------------------------------------------------------------------------"
     );
@@ -296,7 +296,7 @@ const runExample = async () => {
     const subscriber_b2 = streams.Subscriber.from_client(client, "SubscriberB");
     await subscriber_b2.clone().receive_announcement(ann_address.copy());
     const msgs_b = await fetchMessages(subscriber_b2);
-    console.log("Messages of SubB:", msgs_b); // ERROR this varies sometimes it finds messages, sometimes not, sometimes only of a, sometimes only its own
+    console.log("Messages of recreated SubB:", msgs_b); // ERROR this varies sometimes it finds messages, sometimes not, sometimes only of a, sometimes only its own
   } catch (e) {
     console.log("error:", e);
   }

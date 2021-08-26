@@ -44,8 +44,6 @@ const runExample = async () => {
                 const maskedPayload =
                   message && fromBytes(message.get_masked_payload());
 
-                console.log("nextMessages", maskedPayload);
-
                 try {
                   if (!publicPayload && !maskedPayload) {
                     return null;
@@ -97,7 +95,7 @@ const runExample = async () => {
       return new streams.Client(node, options.clone());
     };
     const annLink =
-      "f2b2d9ae7cb636f433d897de8c5b4a480571af407c8ff1870f1b54722c971e6a0000000000000000:4830dd7e8a5d05629dedfa9c";
+      "48284b5d1ca4b76075adb2c14daa40b3ae24ae93f73803c906eb8ce14b581e500000000000000000:e455361a3a1e5c1dbc023daf";
     let annAddress = streams.Address.from_string(annLink);
 
     console.log(
