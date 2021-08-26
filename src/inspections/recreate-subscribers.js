@@ -100,18 +100,24 @@ const runExample = async () => {
 
     const seed = "SubscriberA";
 
+    console.log(
+      "-----------------------------------------------------------------------------"
+    );
     let client = getClient(config.node);
     const subscriber_a = streams.Subscriber.from_client(client, seed);
     await subscriber_a.clone().receive_announcement(annAddress.copy());
     const msgs = await fetchMessages(subscriber_a);
-    console.log("received messages for SubA:", msgs);
+    console.log("#### Received messages for SubA:", msgs);
 
+    console.log(
+      "-----------------------------------------------------------------------------"
+    );
     const seed_b = "SubscriberB";
     client = getClient(config.node);
     const subscriber_b = streams.Subscriber.from_client(client, seed_b);
     await subscriber_b.clone().receive_announcement(annAddress.copy());
     const msgs_b = await fetchMessages(subscriber_b);
-    console.log("received messages for SubB:", msgs_b);
+    console.log("#### Received messages for SubB:", msgs_b);
   } catch (e) {
     console.log("error:", e);
   }
