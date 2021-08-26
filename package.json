@@ -1,0 +1,22 @@
+{
+  "name": "unofficial-streams-examples",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dominic22/unofficial-streams-examples.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dominic22/unofficial-streams-examples/issues"
+  },
+  "homepage": "https://github.com/dominic22/unofficial-streams-examples#readme",
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+}
